@@ -1,13 +1,41 @@
 from flask import Flask
-application = Flask(__name__)
+from flask import jsonify
+import boto3
+import json
+import decimal
+from boto3.dynamodb.conditions import Key, Attr
+import logging
+
+app = Flask(__name__)
+logging.basicConfig(level=logging.INFO)
+
+# Helper class to convert a DynamoDB item to JSON.
+class DecimalEncoder(json.JSONEncoder):
+    def default(self, o):
+        if isinstance(o, decimal.Decimal):
+            if o % 1 > 0:
+                return float(o)
+            else:
+                return int(o)
+        return super(DecimalEncoder, self).default(o)
+
+app.json_encoder = DecimalEncoder
+
+dynamodb = boto3.resource(service_name='dynamodb',
+                          region_name='us-east-1',
+                          # endpoint_url="http://localhost:8000"
+                          )
+
+table = dynamodb.Table('Movies')
 
 
-@application.route('/')
+@app.route('/')
 def hello_world():
 
     return 'Please use /api to use the DataNorth API.'
 
-@application.route('/api')
+
+@app.route('/api')
 def api_intro():
 
     intro = \
@@ -16,15 +44,49 @@ def api_intro():
     <h4> The following endpoints are available: </h4>
 
     <ul>
-      <li>/api/crime</li>
-      <li>/api/energy</li>
-      <li>/api/housing</li>
+      <li>/api/movies</li>
     </ul>
     """
 
     return intro
 
 
+@app.route('/api/movies/<year>/')
+def movies(year):
+    """ Sample movies endpoint. """
+    fe = Key('year').eq(int(year));
+    pe = "#yr, title, info.rating"
+    # Expression Attribute Names for Projection Expression only.
+    ean = { "#yr": "year", }
+    esk = None
+
+
+    response = table.scan(
+        FilterExpression=fe,
+        ProjectionExpression=pe,
+        ExpressionAttributeNames=ean
+        )
+
+    results = [i for i in response['Items']]
+
+    # for i in response['Items']:
+    #     print(json.dumps(i, cls=DecimalEncoder))
+
+    while 'LastEvaluatedKey' in response:
+        response = table.scan(
+            ProjectionExpression=pe,
+            FilterExpression=fe,
+            ExpressionAttributeNames= ean,
+            ExclusiveStartKey=response['LastEvaluatedKey']
+            )
+
+        for i in response['Items']:
+            # print(json.dumps(i, cls=DecimalEncoder))
+            results.append(i)
+
+    return jsonify(items=results)
+
+
 if __name__ == "__main__":
-    application.debug = True
-    application.run()
+    app.debug = True
+    app.run()
