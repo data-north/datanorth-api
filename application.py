@@ -30,12 +30,6 @@ table = dynamodb.Table('Movies')
 
 
 @application.route('/')
-def hello_world():
-
-    return 'Please use /api to use the DataNorth API.'
-
-
-@application.route('/api')
 def api_intro():
 
     intro = \
@@ -44,14 +38,14 @@ def api_intro():
     <h4> The following endpoints are available: </h4>
 
     <ul>
-      <li>/api/movies</li>
+      <li>/movies/year</li>
     </ul>
     """
 
     return intro
 
 
-@application.route('/api/movies/<year>/')
+@application.route('/movies/<year>/')
 def movies(year):
     """ Sample movies endpoint. """
     fe = Key('year').eq(int(year));
