@@ -45,6 +45,12 @@ def api_intro():
     return intro
 
 
+@application.route('/movies/')
+def movies_info():
+    endpoints = ['year']
+    return jsonify({'endpoints': endpoints})
+
+
 @application.route('/movies/<year>/')
 def movies(year):
     """ Sample movies endpoint. """
